@@ -15,3 +15,15 @@ export async function writeFileSafe(filePath: string, content: string) {
         return true;
     }
 }
+
+export async function trackWrite(
+    cwd: string,
+    relPath: string,
+    content: string,
+    created: string[],
+    skipped: string[]
+) {
+    const full = path.join(cwd, relPath);
+    const ok = await writeFileSafe(full, content);
+    (ok ? created : skipped).push(relPath);
+}
