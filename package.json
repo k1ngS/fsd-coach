@@ -1,0 +1,15 @@
+{
+  "name": "fsd-coach-monorepo",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.x",
+    "tsup": "^8.x",
+    "@types/node":"^22.x"
+  },
+  "packageManager": "pnpm@10.21.0"
+}

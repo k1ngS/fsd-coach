@@ -1,0 +1,11 @@
+{
+  "name": "@fsd-coach/core",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format cjs,esm",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}
