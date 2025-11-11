@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
-import { Command} from "commander";
+import { Command } from "commander";
 import chalk from "chalk";
-import { initProject, addFeature } from "@fsd-coach/core";
+import { initProject, addFeature, addEntity } from "@fsd-coach/core";
 import { select, input, checkbox } from "@inquirer/prompts";
 
 const program = new Command();
@@ -96,6 +96,59 @@ program
         console.log(
             chalk.magentaBright(
                 "\nNow open the feature README and answer the questions before writing code. 😉\n"
+            )
+        );
+    });
+
+// Command: fsd-coach add:entity
+program
+    .command("add:entity")
+    .description("Create a new entity module (domain model) following FSD conventions.")
+    .argument("<name>", "Entity name (ex: user, campaign, session)")
+    .option(
+        "-s, --segments <segments>",
+        "Comma-separated segments (default: model,ui)"
+    )
+    .action(async (name, options) => {
+        const rawSegments = options.segments
+            ? String(options.segments).split(",").map((s: string) => s.trim()).filter(Boolean)
+            : null;
+
+        const segments =
+            rawSegments && rawSegments?.length
+                ? rawSegments
+                : await checkbox({
+                    message: `Which segments to create for the entity "${name}"?`,
+                    choices: [
+                        {name: "model", value: "model", checked: true},
+                        {name: "ui", value: "ui", checked: true},
+                        {name: "lib", value: "lib"}
+                    ]
+                });
+
+        const result = await addEntity({
+            name,
+            segments
+        });
+
+        console.log(
+            chalk.magentaBright("\n[FSD Coach] Entity created:"),
+            chalk.cyan(result.entityName)
+        )
+
+        if (result.created.length) {
+            console.log(chalk.green("\n Created:"))
+            result.created.forEach((p) => console.log(" +", p));
+        }
+
+        if (result.skipped.length) {
+            console.log(chalk.yellow("\n Ignored (already existed):"))
+            result.skipped.forEach((p) => console.log(" -", p));
+        }
+
+        console.log(
+            chalk.magentaBright(
+                "\nNow open the entity README and document the domain before spreading that entity throughout the project. 🧠\n"
             )
         );
     });
