@@ -1,5 +1,5 @@
 import * as path from "path";
-import { ensureDir, writeFileSafe, trackWrite } from "../utils/fs";
+import { ensureDir, writeFileSafe, trackWrite, capitalize } from "../utils/fs";
 
 export interface AddFeatureOptions {
     name: string;
@@ -127,8 +127,4 @@ Helpers specific to this feature.
     if (!content) return;
 
     await trackWrite(basePath, `${segment}/README.md`, content, created, skipped);
-}
-
-function capitalize(str: string) {
-    return str.charAt(0).toUpperCase() + str.slice(1);
 }

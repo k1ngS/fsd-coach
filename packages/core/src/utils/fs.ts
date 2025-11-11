@@ -27,3 +27,7 @@ export async function trackWrite(
     const ok = await writeFileSafe(full, content);
     (ok ? created : skipped).push(relPath);
 }
+
+export function capitalize(str: string) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
