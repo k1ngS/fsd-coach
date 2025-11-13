@@ -3,11 +3,13 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { initProject, addFeature, addEntity } from "@fsd-coach/core";
-import { select, input, checkbox } from "@inquirer/prompts";
+import { checkbox } from "@inquirer/prompts";
 import { logger } from "../../core/src/utils/logger";
 import { isFSDCoachError } from "../../core/src/utils/errors";
 import { createConfigCommand } from "./commands/config";
 import { createAuditCommand } from "./commands/audit";
+import { createCacheCommand } from "./commands/cache";
+import { createListCommand } from "./commands/list";
 
 async function safeExecute(action: () => Promise<void>) {
   try {
@@ -45,6 +47,12 @@ program.addCommand(createConfigCommand());
 
 // Add audit command
 program.addCommand(createAuditCommand());
+
+// Add cache command
+program.addCommand(createCacheCommand());
+
+// Add list command
+program.addCommand(createListCommand());
 
 // Command: fsd-coach init --template next-app
 program
