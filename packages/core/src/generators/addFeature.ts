@@ -2,7 +2,7 @@ import * as path from "path";
 import { ensureDir, trackWrite, capitalize } from "../utils/fs";
 import { logger } from "../utils/logger";
 import { Segment } from "../types";
-import { createSegments, FEATURE_SEGMENTS, SegmentConfig } from "./segments";
+import { createSegments, FEATURE_SEGMENTS } from "./segments";
 import { throwIfInvalidName } from "../validators/nameValidator";
 import { normalizeSegments } from "../validators/segmentValidator";
 
