@@ -21,3 +21,6 @@ export * from "./validators/segmentValidator";
 
 // Audit
 export * from "./audit/auditor";
+
+// Cache
+export * from "./cache";

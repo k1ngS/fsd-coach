@@ -12,6 +12,7 @@ import { checkLayerImports, checkSharedImports } from "./rules/layerImports";
 import { checkPublicApi, checkDirectSegmentImports } from "./rules/publicApi";
 import { checkCrossFeatureImports } from "./rules/featureImports";
 import { logger } from "../utils/logger";
+import { FileCache } from "../cache";
 
 async function* walkDirectory(dir: string): AsyncGenerator<string> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -74,6 +75,8 @@ export async function auditProject(
   const allImports: ImportStatement[] = [];
   let totalFiles = 0;
 
+  const importCache = new FileCache<ImportStatement[]>();
+
   // Scan all TypeScript/JavaScript files
   logger.info("Scanning files...");
 
@@ -82,7 +85,17 @@ export async function auditProject(
     logger.debug(`Scanning: ${path.relative(projectRoot, filePath)}`);
 
     try {
-      const imports = await extractImports(filePath);
+      const cacheKey = path.relative(projectRoot, filePath).replace(/\\/g, "/");
+      let imports = await importCache.get(cacheKey, filePath);
+
+      if (!imports) {
+        logger.debug(`Cache miss for ${cacheKey}, extracting imports...`);
+        imports = await extractImports(filePath);
+        await importCache.set(cacheKey, imports, filePath);
+      } else {
+        logger.debug(`Cache hit for ${cacheKey}`);
+      }
+
       allImports.push(...imports);
 
       for (const imp of imports) {
