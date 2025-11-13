@@ -6,6 +6,8 @@ import { initProject, addFeature, addEntity } from "@fsd-coach/core";
 import { select, input, checkbox } from "@inquirer/prompts";
 import { logger } from "../../core/src/utils/logger";
 import { isFSDCoachError } from "../../core/src/utils/errors";
+import { createConfigCommand } from "./commands/config";
+import { createAuditCommand } from "./commands/audit";
 
 async function safeExecute(action: () => Promise<void>) {
   try {
@@ -37,6 +39,12 @@ program
       logger.debug("Verbose mode enabled");
     }
   });
+
+// Add config command
+program.addCommand(createConfigCommand());
+
+// Add audit command
+program.addCommand(createAuditCommand());
 
 // Command: fsd-coach init --template next-app
 program
