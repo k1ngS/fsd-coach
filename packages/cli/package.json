@@ -6,7 +6,9 @@
   },
   "scripts": {
     "build": "tsup src/cli.ts --format esm,cjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "dev": "tsup src/cli.ts --format esm,cjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck:watch": "tsc -p tsconfig.json --noEmit --watch"
   },
   "dependencies": {
     "@fsd-coach/core": "workspace:*",
