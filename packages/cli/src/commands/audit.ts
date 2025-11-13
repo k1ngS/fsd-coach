@@ -53,14 +53,14 @@ export function createAuditCommand(): Command {
                 violation.severity === "error"
                   ? "✗"
                   : violation.severity === "warning"
-                  ? "⚠"
-                  : "ℹ";
+                    ? "⚠"
+                    : "ℹ";
               const color =
                 violation.severity === "error"
                   ? chalk.red
                   : violation.severity === "warning"
-                  ? chalk.yellow
-                  : chalk.blue;
+                    ? chalk.yellow
+                    : chalk.blue;
 
               console.log(
                 color(
