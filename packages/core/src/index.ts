@@ -18,3 +18,6 @@ export * from "./config";
 // Validators
 export * from "./validators/nameValidator";
 export * from "./validators/segmentValidator";
+
+// Audit
+export * from "./audit/auditor";
