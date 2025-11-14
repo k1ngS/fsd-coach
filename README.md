@@ -1,43 +1,41 @@
 # FSD Coach
 
-Your opinionated, minimal CLI (plus a tiny core lib) that helps you start projects with Feature‑Sliced Design (FSD), think in features/domains first, and document architectural decisions as you go.
+> Your opinionated CLI coach for Feature‑Sliced Design (FSD)
 
-> It’s a coach, not a boilerplate generator. It scaffolds the bare minimum, asks guiding questions, and nudges you to keep a clean public API per slice.
+FSD Coach is a small CLI (and core library) that helps you start projects already structured by domain/features and forces you to think about architecture before writing ad‑hoc components.
 
+## ✨ What is implemented today
 
-## Why FSD Coach exists
+- 🏗️ Project initialization with FSD structure for **Next.js App Router** (`init --template next-app`).
+- 📦 Feature generator via `fsd-coach add:feature <name>` that creates `src/features/<name>` with segments like `ui`, `model`, `api` and coaching READMEs.
+- 📄 Auto‑generated `README.fsd.md` explaining the base layers and how to use them.
 
-- Encourage feature/domain‑first thinking, not ad‑hoc components and utils.
-- Standardize layers, naming, and dependency boundaries across projects.
-- Provide skeletons + README prompts instead of “too much” prewritten code.
-- Work across stacks with the same philosophy (frontend first, backend next, full‑stack later).
+Planned but **not implemented yet** (design only, no code):
 
+- 🔍 Architecture audit (`fsd-coach audit`).
+- 📦 Entity generator (`fsd-coach add:entity`).
+- ⚙️ Configuration via `.fsdcoachrc` (`fsd-coach config`).
+- 🚀 Cache system and project structure visualization.
+- 📋 Extra commands like `fsd-coach list` and `fsd-coach cache`.
 
-## Principles
+## 🧠 Principles
 
 - Not a magic boilerplate
-  - No fully working apps. Only a minimal skeleton + docs + questions.
+  - No full apps ready out of the box; only a minimal skeleton + docs + questions.
 
-- Forces reasoning
-  - Every generated slice comes with a README asking:
+- Forces architectural thinking
+  - Every generated feature has a README with questions such as:
     - What problem does this feature solve?
     - Which entities does it use?
-    - What belongs in the public API?
+    - What should be exposed in the public API (`index.ts`)?
 
-- Enforces architecture
-  - Clear layers, consistent names, explicit public APIs.
+- Enforces boundaries
+  - Clear layers, consistent naming, and explicit public APIs per slice.
 
-- Stack‑agnostic, opinionated
-  - Different templates for Next.js App Router, FastAPI, etc., yet the same FSD mindset: organize by domain/feature.
+- Same philosophy across stacks
+  - Next.js App Router today; FastAPI and full‑stack templates are on the roadmap.
 
-
-## Audience
-
-- You (and any developer) who wants to internalize FSD and avoid the classic "src/components" and "src/utils" sprawl.
-- Primary focus today: Next.js (App Router) + React + TypeScript. FastAPI (Python) and full‑stack presets are planned.
-
-
-## Monorepo layout
+## 🗂 Monorepo structure
 
 This repository is a PNPM workspace:
 
@@ -50,81 +48,62 @@ fsd-coach/
 │  └─ core/                     # core generators and filesystem utilities
 ```
 
-- Root scripts:
-  - `pnpm build` → run build across all packages
-  - `pnpm test` → run tests across all packages (none yet)
-  - `pnpm typecheck` → type-check across all packages
+Root scripts:
 
+- `pnpm build` → build all packages.
+- `pnpm test` → run tests (none yet; placeholder).
+- `pnpm typecheck` → type-check all packages.
 
-## Current capabilities (MVP today)
-
-Implemented:
-
-- Command: `fsd-coach init`
-  - Template: `next-app` (App Router) is supported today.
-  - Creates an FSD‑ready folder structure and a top‑level `README.fsd.md` with guidance.
-  - Adds a minimal example feature skeleton (`src/features/example`).
-
-- Command: `fsd-coach add:feature <name>`
-  - Creates `src/features/<name>` with default segments (`ui`, `model`, `api`) and a `README.md` with coaching questions.
-  - You can interactively choose segments (and optionally include `lib`).
-
-Planned (not implemented yet in code):
-
-- Templates: `fastapi`, `fullstack`.
-- Commands: `add:entity`, `audit`.
-
-
-## Install and run
+## 🚀 Quick start (from this repo)
 
 Prerequisites:
 
-- Node.js 18+ (recommended)
+- Node.js 18+
 - PNPM (this repo uses `pnpm@10.21.0`)
 
-```powershell
-You can run the CLI from source right now, or use it later via `npx` once it’s published to npm.
-
-### From source (this monorepo)
+Install dependencies and build:
 
 ```powershell
-# From the repo root
+# from repo root
 pnpm install
-pnpm -w run build   # builds cli and core
+pnpm -w run build
+```
 
-# Run the CLI directly via Node
+Run the CLI directly:
+
+```powershell
 node packages/cli/dist/cli.js --help
 node packages/cli/dist/cli.js init --template next-app
 node packages/cli/dist/cli.js add:feature auth
 ```
 
-When published to npm, the same commands will be available as:
+After publishing to npm, the idea is to use:
 
 ```bash
-npx fsd-coach --help
 npx fsd-coach init --template next-app
 npx fsd-coach add:feature auth
 ```
 
-
-## CLI reference
+## 📚 Commands (implemented)
 
 ### `fsd-coach init`
 
 Initialize a new project skeleton.
 
+**Usage:**
+
 ```bash
 fsd-coach init
 fsd-coach init --template next-app
-fsd-coach init --template fastapi     # planned
-fsd-coach init --template fullstack   # planned
 ```
 
-Current behavior for `--template next-app`:
+Currently, the `next-app` template is implemented. Other templates (`fastapi`, `fullstack`) are still in design.
 
-- Creates the App Router directory and FSD base layers under `src/`.
-- Writes `README.fsd.md` with architecture tips and a checklist.
-- Adds `src/features/example` with a tiny README and public API stub.
+What `next-app` does:
+
+- Creates an App Router base directory and FSD layers under `src/`.
+- Writes `README.fsd.md` explaining each layer and how to use it.
+- Adds an example feature skeleton at `src/features/example/`.
 
 Resulting structure (simplified):
 
@@ -151,106 +130,89 @@ Resulting structure (simplified):
 
 ### `fsd-coach add:feature <name>`
 
-Create a new feature slice with coaching prompts.
+Create a new feature slice and its coaching docs.
+
+**Usage:**
 
 ```bash
 fsd-coach add:feature auth
 fsd-coach add:feature campaigns
 ```
 
-Interactive mode lets you pick segments to create (defaults: `ui`, `model`, `api`; `lib` optional). Each segment gets a brief README explaining its role, and the feature root gets:
+Behavior (based on `@fsd-coach/core`):
+
+- Creates `src/features/<name>/`.
+- Writes a root `README.md` with questions you should answer before coding.
+- Creates `index.ts` as the single public API entry point for that feature.
+- Creates segment directories and READMEs:
+  - `ui/` → visual components for the feature (no heavy business rules).
+  - `model/` → state, hooks, and business logic (testable without UI).
+  - `api/` → HTTP clients/calls encapsulated for this feature.
+  - `lib/` (optional) → helpers internal to the feature.
+
+Example structure:
 
 ```txt
-src/features/<name>/
-├─ README.md          # answer guiding questions before coding
-├─ index.ts           # define feature’s public API here
+src/features/auth/
+├─ README.md
+├─ index.ts
 ├─ ui/
 │  └─ README.md
 ├─ model/
 │  └─ README.md
 ├─ api/
 │  └─ README.md
-└─ lib/               # optional
-   └─ README.md
+└─ lib/
+	 └─ README.md
 ```
 
+## 🧩 Templates (status)
 
-## Templates (today and planned)
+- `next-app` (implemented): Next.js App Router + FSD directories + coaching docs.
+- `fastapi` (planned): FSD‑inspired FastAPI backend with `app/core`, `app/shared`, `app/modules/<feature>`.
+- `fullstack` (planned): Combined `frontend/` (next-app) + `backend/` (fastapi) plus `ARCHITECTURE.md` explaining front/back mirroring.
 
-- `next-app` (implemented): Next.js App Router skeleton + FSD directories + coaching docs.
-- `fastapi` (planned):
-  - `backend/app/{core,shared,modules}` with `modules/<feature>/{api.py,schemas.py,service.py,repository.py,README.md}`.
-- `fullstack` (planned):
-  - `frontend/` as `next-app` + `backend/` as `fastapi` and an `ARCHITECTURE.md` describing front/back mirroring.
+## 🧭 Recommended workflow (vision)
 
-
-## Recommended workflow
-
-### Step 1: Starting a project
+### Step 1: Start a project
 
 ```bash
 npx fsd-coach init --template next-app
 ```
 
-### Step 2: Before writing UI ad‑hoc
+### Step 2: Before writing random UI
 
 ```bash
 npx fsd-coach add:feature auth
-# Fill the generated READMEs and commit the public API in index.ts
 ```
 
-### Step 3: New domain model
+Fill in the generated READMEs and define the public API in `src/features/auth/index.ts` before writing components.
 
-```bash
-# planned
-npx fsd-coach add:entity user
-```
+### Step 3: Entities and audit (future)
 
-### Step 4: Pre‑commit reminders
+The design includes:
 
-```bash
-# planned
-npx fsd-coach audit
-```
+- `fsd-coach add:entity <name>` to create reusable domain entities.
+- `fsd-coach audit` to scan the folder structure and remind you about missing READMEs or missing `index.ts` public APIs.
 
-
-## Developing this repo
+## 🛠 Developing this repo
 
 ```powershell
-# Install deps
 pnpm install
-
-# Type-check all packages
 pnpm -w run typecheck
-
-# Build all packages
 pnpm -w run build
-
-# Run the CLI locally
 node packages/cli/dist/cli.js --help
 ```
 
 Notes:
 
-- The CLI package `fsd-coach` depends on the core package `@fsd-coach/core` via workspace protocol.
-- If you change generators in `packages/core`, rebuild before testing the CLI.
+- The CLI package `fsd-coach` depends on the core package `@fsd-coach/core` (workspace protocol).
+- If you change generators in `packages/core`, rebuild before testing the CLI again.
 
+## 🎓 Learning FSD
 
-## Roadmap
+Some good starting points to understand Feature‑Sliced Design and modular architecture:
 
-- Implement `fastapi` and `fullstack` templates.
-- Add `add:entity` and `audit` commands.
-- FSD linting: import rules between layers/slices.
-- Opinionated presets, e.g. `--preset=saas`, `--preset=dashboard`.
-- VS Code integration (command palette: “Create FSD Feature”).
-- Educational walkthrough (`fsd-coach guide`).
-
-
-## FAQ
-
-- Why doesn’t it generate a working app?
-  - Because the goal is to shape your architecture and decisions, not to hide them.
-- Where should my business rules live?
-  - In `model/` for features, in `entities/` for reusable domain models.
-- What is the “public API” of a feature?
-  - The exports from `src/features/<name>/index.ts` that other layers are allowed to import.
+- https://feature-sliced.design/
+- https://feature-sliced.design/docs/get-started/overview
+- Articles and talks about “feature‑first architecture”, “modular frontends”, and “vertical slices”.
