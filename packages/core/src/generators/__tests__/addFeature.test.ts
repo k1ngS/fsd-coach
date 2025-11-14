@@ -22,7 +22,7 @@ describe("addFeature", () => {
   it("should create feature with default segments", async () => {
     const result = await addFeature({ name: "auth" });
 
-    expect(result.featureName).toBe("auth");
+    expect(result.name).toBe("auth");
     expect(result.segments).toEqual(["ui", "model", "api"]);
     expect(result.created.length).toBeGreaterThan(0);
 

@@ -22,7 +22,7 @@ describe("addEntity", () => {
   it("should create entity with default segments (model, ui)", async () => {
     const result = await addEntity({ name: "user" });
 
-    expect(result.entityName).toBe("user");
+    expect(result.name).toBe("user");
     expect(result.segments).toEqual(["model", "ui"]);
     expect(result.created.length).toBeGreaterThan(0);
 
