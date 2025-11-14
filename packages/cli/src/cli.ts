@@ -63,12 +63,19 @@ program
     'Project template to use (options: "next-app", "fastapi", "fullstack")',
     "next-app"
   )
+  .option("--dry-run", "Simulate project initialization without writing files")
   .action((opts) =>
     safeExecute(async () => {
       const template = opts.template;
-      logger.step(`Initializing new project with template: ${template}`);
+      const dryRun = Boolean(opts.dryRun);
+      logger.step(
+        `${dryRun ? "[DRY RUN] " : ""}Initializing new project with template: ${template}`
+      );
 
-      const result = await initProject({ template });
+      const result = await initProject({
+        template,
+        dryRun,
+      });
 
       logger.success("Project initialized successfully!");
       logger.info(`Template: ${chalk.cyan(result.template)}`);
@@ -102,6 +109,7 @@ program
     "-s, --segments <segments>",
     "Comma-separated segments (default: ui,model,api)"
   )
+  .option("--dry-run", "Simulate feature creation without writing files")
   .action((name, options) =>
     safeExecute(async () => {
       const rawSegments = options.segments
@@ -124,12 +132,16 @@ program
                 { name: "lib", value: "lib" },
               ],
             });
+      const dryRun = Boolean(options.dryRun);
       const result = await addFeature({
         name,
         segments,
+        dryRun,
       });
 
-      logger.success(`Feature created: ${chalk.cyan(result.featureName)}`);
+      logger.success(
+        `${dryRun ? "[DRY RUN] Feature would be created" : "Feature created"}: ${chalk.cyan(result.name)}`
+      );
 
       if (result.created.length) {
         console.log(chalk.green("\n✓ Created:"));
@@ -160,6 +172,7 @@ program
     "-s, --segments <segments>",
     "Comma-separated segments (default: model,ui)"
   )
+  .option("--dry-run", "Simulate entity creation without writing files")
   .action((name, options) =>
     safeExecute(async () => {
       const rawSegments = options.segments
@@ -181,12 +194,16 @@ program
               ],
             });
 
+      const dryRun = Boolean(options.dryRun);
       const result = await addEntity({
         name,
         segments,
+        dryRun,
       });
 
-      logger.success(`Entity created: ${chalk.cyan(result.entityName)}`);
+      logger.success(
+        `${dryRun ? "[DRY RUN] Entity would be created" : "Entity created"}: ${chalk.cyan(result.name)}`
+      );
 
       if (result.created.length) {
         console.log(chalk.green("\n✓ Created:"));
