@@ -1,28 +1,14 @@
 import * as path from "path";
-import { ensureDir, trackWrite, capitalize } from "../utils/fs";
+import { ensureDir, trackWrite, capitalize, FSOptions } from "../utils/fs";
 import { throwIfInvalidName } from "../validators/nameValidator";
 import { throwIfInvalidSegments } from "../validators/segmentValidator";
 import { logger } from "../utils/logger";
-import { Segment } from "../types";
+import { GeneratorOptions, GeneratorResult, Segment } from "../types";
 import { createSegments, ENTITY_SEGMENTS } from "./segments";
 
-export interface AddEntityOptions {
-  name: string;
-  segments?: string[];
-  rootDir?: string;
-}
-
-export interface AddEntityResult {
-  entityName: string;
-  basePath: string;
-  segments: Segment[];
-  created: string[];
-  skipped: string[];
-}
-
 export async function addEntity(
-  options: AddEntityOptions
-): Promise<AddEntityResult> {
+  options: GeneratorOptions
+): Promise<GeneratorResult> {
   throwIfInvalidName(options.name, "entity");
 
   const segments =
@@ -35,12 +21,14 @@ export async function addEntity(
   logger.step(`Creating entity: ${options.name}`);
 
   const rootDir = options.rootDir ?? "src/entities";
-  const basePath = path.join(process.cwd(), rootDir, options.name);
+  const cwd = options.cwd ?? process.cwd();
+  const basePath = path.join(cwd, rootDir, options.name);
 
   const created: string[] = [];
   const skipped: string[] = [];
+  const fsOptions: FSOptions = { dryRun: options.dryRun };
 
-  await ensureDir(basePath);
+  await ensureDir(basePath, fsOptions);
   logger.debug(`Ensured directory: ${basePath}`);
 
   // Entity README
@@ -61,7 +49,8 @@ Answer before implementing:
 Document here as if it were a quick reference for the team/future you.
 `,
     created,
-    skipped
+    skipped,
+    fsOptions
   );
 
   // index.ts Public API for entity
@@ -79,9 +68,10 @@ Document here as if it were a quick reference for the team/future you.
 // export { ${capitalize(options.name)}Badge } from "./ui/${capitalize(
       options.name
     )}Badge";
-`,
+  `,
     created,
-    skipped
+    skipped,
+    fsOptions
   );
 
   // Create segments directories
@@ -90,11 +80,12 @@ Document here as if it were a quick reference for the team/future you.
     segments as Segment[],
     ENTITY_SEGMENTS,
     created,
-    skipped
+    skipped,
+    fsOptions
   );
 
   return {
-    entityName: options.name,
+    name: options.name,
     basePath,
     segments: segments as Segment[],
     created,

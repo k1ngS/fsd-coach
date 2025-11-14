@@ -1,28 +1,14 @@
 import * as path from "path";
-import { ensureDir, trackWrite, capitalize } from "../utils/fs";
+import { ensureDir, trackWrite, capitalize, FSOptions } from "../utils/fs";
 import { logger } from "../utils/logger";
-import { Segment } from "../types";
+import { GeneratorOptions, GeneratorResult } from "../types";
 import { createSegments, FEATURE_SEGMENTS } from "./segments";
 import { throwIfInvalidName } from "../validators/nameValidator";
 import { normalizeSegments } from "../validators/segmentValidator";
 
-export interface AddFeatureOptions {
-  name: string;
-  segments?: string[]; // e.g., ['ui', 'models', 'api']
-  rootDir?: string; // e.g., "src/features"
-}
-
-export interface AddFeatureResult {
-  featureName: string;
-  basePath: string;
-  segments: Segment[];
-  created: string[];
-  skipped: string[];
-}
-
 export async function addFeature(
-  options: AddFeatureOptions
-): Promise<AddFeatureResult> {
+  options: GeneratorOptions
+): Promise<GeneratorResult> {
   // Validate feature name
   throwIfInvalidName(options.name, "feature");
 
@@ -32,12 +18,14 @@ export async function addFeature(
   logger.step(`Creating feature: ${options.name}`);
 
   const rootDir = options.rootDir ?? "src/features";
-  const basePath = path.join(process.cwd(), rootDir, options.name);
+  const cwd = options.cwd ?? process.cwd();
+  const basePath = path.join(cwd, rootDir, options.name);
 
   const created: string[] = [];
   const skipped: string[] = [];
+  const fsOptions: FSOptions = { dryRun: options.dryRun };
 
-  await ensureDir(basePath);
+  await ensureDir(basePath, fsOptions);
   logger.debug(`Ensured directory: ${basePath}`);
 
   // README with questions (coach mode)
@@ -58,7 +46,8 @@ Before writing code, answer:
 Fill out this README as if it were documentation for yourself in the future.
         `,
     created,
-    skipped
+    skipped,
+    fsOptions
   );
 
   // Index.ts as oficial exit port
@@ -75,14 +64,22 @@ Fill out this README as if it were documentation for yourself in the future.
 // export * from "./model/selector";
 //`,
     created,
-    skipped
+    skipped,
+    fsOptions
   );
 
   // Create segments directories
-  await createSegments(basePath, segments, FEATURE_SEGMENTS, created, skipped);
+  await createSegments(
+    basePath,
+    segments,
+    FEATURE_SEGMENTS,
+    created,
+    skipped,
+    fsOptions
+  );
 
   return {
-    featureName: options.name,
+    name: options.name,
     basePath,
     segments,
     created,

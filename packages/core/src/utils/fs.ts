@@ -1,11 +1,28 @@
 import { promises as fs } from "fs";
 import * as path from "path";
+import { logger } from "./logger";
 
-export async function ensureDir(dirPath: string) {
+export interface FSOptions {
+  dryRun?: boolean;
+}
+
+export async function ensureDir(dirPath: string, options: FSOptions = {}) {
+  if (options.dryRun) {
+    logger.info(`[DRY RUN] Would create directory: ${dirPath}`);
+    return;
+  }
   await fs.mkdir(dirPath, { recursive: true });
 }
 
-export async function writeFileSafe(filePath: string, content: string) {
+export async function writeFileSafe(
+  filePath: string,
+  content: string,
+  options: FSOptions = {}
+): Promise<boolean> {
+  if (options.dryRun) {
+    logger.info(`[DRY RUN] Would create file: ${filePath}`);
+    return false;
+  }
   try {
     await fs.access(filePath);
     return false;
@@ -21,10 +38,11 @@ export async function trackWrite(
   relPath: string,
   content: string,
   created: string[],
-  skipped: string[]
+  skipped: string[],
+  options: FSOptions = {}
 ) {
   const full = path.join(cwd, relPath);
-  const ok = await writeFileSafe(full, content);
+  const ok = await writeFileSafe(full, content, options);
   (ok ? created : skipped).push(relPath);
 }
 

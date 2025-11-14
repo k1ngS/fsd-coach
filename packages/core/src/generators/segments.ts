@@ -1,5 +1,5 @@
 import * as path from "path";
-import { ensureDir, trackWrite } from "../utils/fs";
+import { ensureDir, trackWrite, FSOptions } from "../utils/fs";
 
 export interface SegmentConfig {
   name: string;
@@ -92,14 +92,15 @@ export async function createSegments(
   segments: string[],
   segmentConfigs: Record<string, SegmentConfig>,
   created: string[],
-  skipped: string[]
+  skipped: string[],
+  options: FSOptions = {}
 ): Promise<void> {
   for (const segmentName of segments) {
     const config = segmentConfigs[segmentName];
     if (!config) continue;
 
     const segmentPath = path.join(basePath, segmentName);
-    await ensureDir(segmentPath);
+    await ensureDir(segmentPath, options);
     created.push(path.relative(process.cwd(), segmentPath));
 
     // README
@@ -108,7 +109,8 @@ export async function createSegments(
       `${segmentName}/README.md`,
       config.description,
       created,
-      skipped
+      skipped,
+      options
     );
 
     // Arquivos adicionais (se configurado)
@@ -119,7 +121,14 @@ export async function createSegments(
             ? file.content({ segmentName, basePath })
             : file.content;
 
-        await trackWrite(segmentPath, file.name, content, created, skipped);
+        await trackWrite(
+          segmentPath,
+          file.name,
+          content,
+          created,
+          skipped,
+          options
+        );
       }
     }
   }
