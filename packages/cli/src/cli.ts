@@ -3,13 +3,17 @@
 import { Command } from "commander";
 import chalk from "chalk";
 import { initProject, addFeature, addEntity } from "@fsd-coach/core";
-import { checkbox } from "@inquirer/prompts";
+import { checkbox, select } from "@inquirer/prompts";
 import { logger } from "../../core/src/utils/logger";
 import { isFSDCoachError } from "../../core/src/utils/errors";
 import { createConfigCommand } from "./commands/config";
 import { createAuditCommand } from "./commands/audit";
 import { createCacheCommand } from "./commands/cache";
 import { createListCommand } from "./commands/list";
+
+import { spawn } from "child_process";
+import { promises as fs } from "fs";
+import * as path from "path";
 
 async function safeExecute(action: () => Promise<void>) {
   try {
@@ -63,11 +67,108 @@ program
     'Project template to use (options: "next-app", "fastapi", "fullstack")',
     "next-app"
   )
+  .option(
+    "-m, --mode <mode>",
+    "Scaffold mode: 'fsd-only' (just FSD folders) or 'next-app' (create Next app + FSD)"
+  )
+  .option("--yes", "Skip interactive questions and use defaults", false)
   .option("--dry-run", "Simulate project initialization without writing files")
   .action((opts) =>
     safeExecute(async () => {
       const template = opts.template;
       const dryRun = Boolean(opts.dryRun);
+      const yes = Boolean(opts.yes);
+      const cwd = process.cwd();
+
+      if (template !== "next-app") {
+        logger.step(
+          `${dryRun ? "[DRY RUN] " : ""}Initializing new project with template: ${template}`
+        );
+
+        const result = await initProject({
+          template,
+          dryRun,
+        });
+
+        logger.success("Project initialized successfully!");
+        logger.info(`Template: ${chalk.cyan(result.template)}`);
+        logger.info(`Path: ${chalk.cyan(result.cwd)}`);
+
+        if (result.created.length) {
+          console.log(chalk.green("\n✓ Files and directories created:"));
+          logger.list(result.created);
+        }
+
+        if (result.skipped.length) {
+          console.log(
+            chalk.yellow("\n⚠ Files and directories skipped (already exist):")
+          );
+          logger.list(result.skipped, "-");
+        }
+        console.log(
+          chalk.magentaBright(
+            "\n📚 Now read the README.fsd.md and complete the README responses for each feature. Happy coding! 🚀\n"
+          )
+        );
+
+        return;
+      }
+
+      // --- Special flow for "next-app" template ---
+
+      const alreadyNextApp = await detectExistingNextApp(cwd);
+
+      let mode: "fsd-only" | "next-app" | undefined = opts.mode;
+
+      // If is already a Next.js app, no need to create it again; just add FSD structure
+      if (alreadyNextApp) {
+        logger.info(
+          chalk.cyan(
+            "Detected existing Next.js app in this folder. FSD Coach will only scaffold the FSD structure."
+          )
+        );
+        mode = "fsd-only";
+      } else if (!mode) {
+        if (yes) {
+          // No interactive, choose default mode safely.
+          mode = "fsd-only";
+        } else {
+          // Ask interactively for choice of mode
+          mode = await select({
+            message: "How do you want to initialize this project?",
+            choices: [
+              {
+                name: "FSD-only (folders + docs, no runtime)",
+                value: "fsd-only",
+              },
+              {
+                name: "Next.js app + FSD (create-next-app + FSD layout)",
+                value: "next-app",
+              },
+            ],
+          });
+        }
+      }
+
+      if (!mode) {
+        // Defense fallback
+        mode = "fsd-only";
+      }
+
+      // --- If mode is "next-app" and no existing Next app, create it first ---
+      if (mode === "next-app" && !alreadyNextApp) {
+        const safe = await isSafeToCreateNextApp(cwd);
+        if (!safe) {
+          throw new Error(
+            "Current directory is not empty and does not look like a fresh project. " +
+              "Run `fsd-coach init` in an empty folder or inside an existing Next.js app."
+          );
+        }
+
+        await runCreateNextApp(cwd, dryRun);
+      }
+
+      // --- All the cases, apply the scaffolding of FSD structure ---
       logger.step(
         `${dryRun ? "[DRY RUN] " : ""}Initializing new project with template: ${template}`
       );
@@ -92,6 +193,7 @@ program
         );
         logger.list(result.skipped, "-");
       }
+
       console.log(
         chalk.magentaBright(
           "\n📚 Now read the README.fsd.md and complete the README responses for each feature. Happy coding! 🚀\n"
@@ -222,5 +324,82 @@ program
       );
     })
   );
+
+// --- Helpers for Next.js app detection and creation ---
+async function detectExistingNextApp(cwd: string): Promise<boolean> {
+  try {
+    const pkgPath = path.join(cwd, "package.json");
+    const raw = await fs.readFile(pkgPath, "utf-8");
+    const pkg = JSON.parse(raw) as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+
+    const deps = {
+      ...(pkg.dependencies || {}),
+      ...(pkg.devDependencies || {}),
+    };
+    return typeof deps["next"] === "string";
+  } catch {
+    // Could not read package.json, assume no Next.js
+    return false;
+  }
+}
+
+async function isSafeToCreateNextApp(cwd: string): Promise<boolean> {
+  const entries = await fs.readdir(cwd, { withFileTypes: true });
+
+  if (!entries.length) return true;
+
+  // We allow only "harmless" files so as not to destroy an existing project
+  const allowed = new Set([
+    ".git",
+    ".gitignore",
+    ".gitattributes",
+    "README.md",
+    "LICENSE",
+  ]);
+
+  for (const entry of entries) {
+    if (!allowed.has(entry.name)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+async function runCreateNextApp(cwd: string, dryRun: boolean): Promise<void> {
+  const cmd = "pnpm";
+  const args = ["dlx", "create-next-app@latest", ".", "--yes", "--use-pnpm"];
+
+  const pretty = `${cmd} ${args.join(" ")}`;
+
+  logger.step(
+    `${dryRun ? "[DRY RUN] " : ""}Creating Next.js app with command: ${chalk.cyan(pretty)}`
+  );
+
+  if (dryRun) return;
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      cwd,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+
+    child.on("exit", (code) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`create-next-app exited with code ${code}`));
+      }
+    });
+
+    child.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
 
 program.parse(process.argv);
