@@ -84,6 +84,89 @@ npx fsd-coach init --template next-app
 npx fsd-coach add:feature auth
 ```
 
+## 🚀 Bootstrapping a Next.js + FSD Project
+
+`fsd-coach` can both:
+
+1. Create a full **Next.js application**, and
+2. Scaffold a **Feature-Sliced Design (FSD)** structure inside it.
+
+### 1. Create a new Next.js app with FSD (recommended)
+
+Run inside an **empty folder**:
+
+```bash
+fsd-coach init --template next-app --mode next-app
+```
+
+What this does:
+
+- Uses `pnpm dlx create-next-app@latest .` to create a Next.js app (TypeScript, Tailwind, ESLint, App Router, etc.).
+- Then applies the FSD layout on top:
+  - `src/features`
+  - `src/entities`
+  - `src/widgets`
+  - `src/processes`
+  - `src/shared/ui`
+  - `src/shared/lib`
+  - `src/shared/config`
+  - `README.fsd.md`
+  - `src/features/example/*`
+
+After that, just:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Your Next.js app is now FSD-ready.
+
+---
+
+### 2. Add FSD structure to an existing Next.js app
+
+If you already have a Next.js project, run:
+
+```bash
+fsd-coach init --template next-app
+```
+
+`fsd-coach` will:
+
+- Detect the existing Next.js app via `package.json`.
+- **Skip** creating another Next app.
+- Only scaffold the FSD structure (folders + `README.fsd.md`).
+
+This is ideal if you started with `create-next-app` manually and now want to adopt FSD.
+
+---
+
+### 3. FSD-only mode (no runtime)
+
+If you want just the FSD folder layout (no Next.js runtime):
+
+```bash
+fsd-coach init --template next-app --mode fsd-only
+```
+
+This will:
+
+- Create only the FSD-oriented directories + docs.
+- Not install or generate any framework-specific code.
+
+---
+
+### 4. Non-interactive usage
+
+For scripts/CI or fully automated setup, use:
+
+```bash
+fsd-coach init --template next-app --mode next-app --yes
+```
+
+- `--yes` skips interactive questions and uses safe defaults.
+
 ## 📚 Commands (implemented)
 
 ### `fsd-coach init`
