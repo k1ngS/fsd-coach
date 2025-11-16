@@ -42,7 +42,7 @@ async function initNextAppStructure(
 ) {
   // FSD Base Structure + App Router
   const dirsToCreate = [
-    "app/(public)",
+    "src/app/(public)",
     "src/app",
     "src/processes",
     "src/pages",
