@@ -1,34 +1,61 @@
-import { TemplateStrategy } from "./base";
-import { FastAPITemplate } from "./fastapi";
-import { NextAppTemplate } from "./next-app";
+import { ITemplate, TemplateMetadata, TemplateName } from "./types";
+import { createError } from "../utils/errors";
 
 export class TemplateRegistry {
-  private templates = new Map<string, TemplateStrategy>();
+  private templates = new Map<TemplateName, ITemplate>();
 
-  constructor() {
-    this.register(new NextAppTemplate());
-    this.register(new FastAPITemplate());
-    // this.register(new FullstackTemplate());
+  /**
+   * Register a template
+   */
+  register(template: ITemplate): void {
+    this.templates.set(template.metadata.name, template);
   }
 
-  register(template: TemplateStrategy): void {
-    this.templates.set(template.name, template);
+  /**
+   * Unregister a template (useful for plugins)
+   */
+  unregister(name: TemplateName): boolean {
+    return this.templates.delete(name);
   }
 
-  get(name: string): TemplateStrategy | undefined {
-    return this.templates.get(name);
-  }
-
-  list(): string[] {
-    return Array.from(this.templates.keys());
-  }
-
-  async detectTemplate(cwd: string): Promise<string | null> {
-    for (const [name, template] of this.templates) {
-      if (await template.validate(cwd)) {
-        return name;
-      }
+  /**
+   * Get a specific template
+   */
+  get(name: TemplateName): ITemplate {
+    const template = this.templates.get(name);
+    if (!template) {
+      const available = this.list()
+        .map((t) => t.name)
+        .join(", ");
+      throw createError(
+        "TEMPLATE_NOT_FOUND",
+        `Template "${name}" not found. Available templates: ${available}`
+      );
     }
-    return null;
+    return template;
+  }
+
+  /**
+   * List all registered templates metadata
+   */
+  list(): TemplateMetadata[] {
+    return Array.from(this.templates.values()).map((t) => t.metadata);
+  }
+
+  /**
+   * Check if template exists
+   */
+  has(name: TemplateName): boolean {
+    return this.templates.has(name);
+  }
+
+  /**
+   * Get template count
+   */
+  count(): number {
+    return this.templates.size;
   }
 }
+
+// Singleton instance
+export const templateRegistry = new TemplateRegistry();
