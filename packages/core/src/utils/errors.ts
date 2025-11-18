@@ -6,7 +6,8 @@ export type ErrorCode =
   | "INVALID_SEGMENT"
   | "INVALID_LAYER"
   | "CONFIG_NOT_FOUND"
-  | "INVALID_CONFIG";
+  | "INVALID_CONFIG"
+  | "TEMPLATE_NOT_FOUND";
 
 export class FSDCoachError extends Error {
   constructor(
