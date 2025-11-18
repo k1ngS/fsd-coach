@@ -1,26 +1,43 @@
 // Generators
-export * from "./generators/initProject";
-export * from "./generators/addFeature";
-export * from "./generators/addEntity";
-export * from "./generators/segments";
+export {
+  initProject,
+  InitProjectOptions,
+  InitResult,
+} from "./generators/initProject";
+export { addFeature } from "./generators/addFeature";
+export { addEntity } from "./generators/addEntity";
+export { createSegments } from "./generators/segments";
 
-// Types
-export * from "./types";
+// Templates (NEW)
+export { templateRegistry } from "./templates";
+export type {
+  ITemplate,
+  TemplateMetadata,
+  TemplateContext,
+  TemplateName,
+} from "./templates";
 
-// Utils
-export * from "./utils/logger";
-export * from "./utils/errors";
-export * from "./utils/fs";
-
-// Config management
-export * from "./config";
-
-// Validators
-export * from "./validators/nameValidator";
-export * from "./validators/segmentValidator";
+// Config
+export { loadConfig, saveConfig, mergeConfig } from "./config";
+export { DEFAULT_CONFIG } from "./config";
 
 // Audit
-export * from "./audit/auditor";
+export { auditProject } from "./audit/auditor";
 
 // Cache
-export * from "./cache";
+export { FileCache } from "./cache";
+
+// Utils
+export { logger } from "./utils/logger";
+export { isFSDCoachError, createError } from "./utils/errors";
+export type { FSDCoachError } from "./utils/errors";
+
+// Types
+export type {
+  FSDConfig,
+  GeneratorOptions,
+  GeneratorResult,
+  AuditOptions,
+  AuditResult,
+  Segment,
+} from "./types";
