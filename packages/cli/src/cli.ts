@@ -2,10 +2,15 @@
 
 import { Command } from "commander";
 import chalk from "chalk";
-import { initProject, addFeature, addEntity } from "@fsd-coach/core";
+import {
+  initProject,
+  addFeature,
+  addEntity,
+  isFSDCoachError,
+  logger,
+  templateRegistry,
+} from "@fsd-coach/core";
 import { checkbox, select } from "@inquirer/prompts";
-import { logger } from "../../core/src/utils/logger";
-import { isFSDCoachError } from "../../core/src/utils/errors";
 import { createConfigCommand } from "./commands/config";
 import { createAuditCommand } from "./commands/audit";
 import { createCacheCommand } from "./commands/cache";
@@ -57,6 +62,23 @@ program.addCommand(createCacheCommand());
 
 // Add list command
 program.addCommand(createListCommand());
+
+// Add command to list available templates
+program
+  .command("templates")
+  .description("List available project templates")
+  .action(() => {
+    const templates = templateRegistry.list();
+
+    console.log(chalk.blue("\n📦 Available Templates:\n"));
+
+    templates.forEach((template) => {
+      console.log(chalk.cyan(`  ${template.name}`));
+      console.log(chalk.gray(`     ${template.description}`));
+      console.log(chalk.gray(`     Tags: ${template.tags.join(", ")}`));
+      console.log();
+    });
+  });
 
 // Command: fsd-coach init --template next-app
 program
