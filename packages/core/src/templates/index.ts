@@ -1,17 +1,16 @@
-import { templateRegistry } from "./registry";
 import { NextAppTemplate } from "./next-app/NextAppTemplate";
-// Import future templates here
-// import { FastAPITemplate } from "./fastapi/FastAPITemplate";
-// import { FullStackTemplate } from "./fullstack/FullStackTemplate";
+import { ReactViteTemplate } from "./react-vite/ReactViteTemplate";
+import { FastAPITemplate } from "./fastapi/FastAPITemplate";
+import { FullstackTemplate } from "./fullstack/FullstackTemplate";
+import { templateRegistry } from ".";
 
-// Register all built-in templates
+// Register all templates
 templateRegistry.register(new NextAppTemplate());
-// templateRegistry.register(new FastAPITemplate());
-// templateRegistry.register(new FullStackTemplate());
+templateRegistry.register(new ReactViteTemplate());
+templateRegistry.register(new FastAPITemplate());
+templateRegistry.register(new FullstackTemplate());
 
 // Export registry and types
 export { templateRegistry } from "./registry";
 export * from "./types";
-export * from "./base/BaseTemplate";
-export * from "./shared/ContentGenerator";
-export * from "./shared/SegmentTemplates";
+export * from "./fullstack/types";
