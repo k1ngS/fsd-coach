@@ -1,20 +1,27 @@
-import { BaseTemplate } from "../base/BaseTemplate";
 import {
+  IBootstrappableTemplate,
   TemplateMetadata,
   TemplateContext,
   ValidationResult,
-  FileTemplate,
+  TemplateResult,
 } from "../types";
-import { FSOptions, ensureDir, trackWrite } from "../../utils/fs";
-import {
-  loadTemplate,
-  createTemplateVariables,
-  resolveContent,
-} from "../shared/ContentGenerator";
+import { ensureDir, trackWrite } from "../../utils/fs";
+import { NextAppBootstrapper } from "../bootstrappers/NextAppBootstrapper";
+import { isSafeDirectory } from "../shared/CommandRunner";
+import { logger } from "../../utils/logger";
 import * as path from "path";
-import { promises as fs } from "fs";
+import {
+  createTemplateVariables,
+  generateContent,
+} from "../shared/ContentGenerator";
+import {
+  EXAMPLE_FEATURE_README,
+  README_FSD_MD,
+} from "../content/next-app/README.fsd.md";
 
-export class NextAppTemplate extends BaseTemplate {
+export class NextAppTemplate implements IBootstrappableTemplate {
+  private readonly bootstrapper = new NextAppBootstrapper();
+
   readonly metadata: TemplateMetadata = {
     name: "next-app",
     displayName: "Next.js App Router + FSD",
@@ -25,122 +32,136 @@ export class NextAppTemplate extends BaseTemplate {
     repository: "https://github.com/k1ngS/fsd-coach",
   };
 
-  protected async customValidate(
-    context: TemplateContext
-  ): Promise<ValidationResult> {
+  async validate(context: TemplateContext): Promise<ValidationResult> {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    // Check if Next.js is already installed
-    const pkgPath = path.join(context.cwd, "package.json");
-    try {
-      const pkgContent = await fs.readFile(pkgPath, "utf-8");
-      const pkg = JSON.parse(pkgContent);
+    // Check if Next.js already installed
+    const hasNext = await this.bootstrapper.isInstalled(context.cwd);
 
-      if (pkg.dependencies?.next) {
-        warnings.push(
-          "Next.js already installed. Only FSD structure will be added."
-        );
-      }
-    } catch {
-      // No package.json found - this is fine for new projects
+    if (hasNext) {
+      warnings.push(
+        "Next.js already installed. Only FSD structure will be added."
+      );
     }
 
-    // Check if directory is not empty (except for allowed files)
-    try {
-      const entries = await fs.readdir(context.cwd);
-      const allowedFiles = new Set([
-        ".git",
-        ".gitignore",
-        ".gitattributes",
-        "README.md",
-        "LICENSE",
-        "package.json",
-        "node_modules",
-      ]);
+    // Check if directory is safe (only if creating new app)
+    if (!hasNext && context.options.createApp !== false) {
+      const isSafe = await isSafeDirectory(context.cwd);
 
-      const unexpectedFiles = entries.filter((e) => !allowedFiles.has(e));
-
-      if (unexpectedFiles.length > 0) {
-        warnings.push(
-          `Directory is not empty. Found unexpected files: ${unexpectedFiles.join(", ")}`
+      if (!isSafe && !context.options.force) {
+        errors.push(
+          "Directory is not empty. Use --force to proceed, or run in an empty directory."
         );
       }
-    } catch {
-      // Directory doesn't exist - will be created
     }
 
-    return { valid: true, errors, warnings };
+    return { valid: errors.length === 0, errors, warnings };
   }
 
-  protected async createDirectoryStructure(
+  async bootstrap(
     context: TemplateContext,
+    fsOptions: { dryRun?: boolean }
+  ): Promise<void> {
+    const hasNext = await this.bootstrapper.isInstalled(context.cwd);
+
+    if (!hasNext) {
+      await this.bootstrapper.create({
+        cwd: context.cwd,
+        packageManager: context.options.packageManager as string,
+        dryRun: fsOptions.dryRun,
+      });
+    } else {
+      logger.info("Next.js already installed. Skipping bootstrap.");
+    }
+  }
+
+  async applyFSD(
+    context: TemplateContext,
+    fsOptions: { dryRun?: boolean }
+  ): Promise<TemplateResult> {
+    const created: string[] = [];
+    const skipped: string[] = [];
+
+    logger.step("Applying FSD structure...");
+
+    // Create FSD directories
+    await this.createFSDStructure(context.cwd, created, skipped, fsOptions);
+
+    // Generate documentation
+    await this.generateDocs(context, created, skipped, fsOptions);
+
+    // Generate minimal example files
+    await this.generateExampleFiles(context, created, skipped, fsOptions);
+
+    logger.success("FSD structure applied successfully");
+
+    return {
+      created,
+      skipped,
+      metadata: this.metadata,
+    };
+  }
+
+  private async createFSDStructure(
+    cwd: string,
     created: string[],
     skipped: string[],
-    fsOptions: FSOptions
+    fsOptions: { dryRun?: boolean }
   ): Promise<void> {
-    const dirs = [
-      "app",
-      "app/(public)",
-      "src/app",
+    const fsdDirs = [
+      // App layer (providers, global config)
+      "src/app/providers",
+      "src/app/styles",
+
+      // Processes layer
       "src/processes",
+
+      // Pages layer (optional)
       "src/pages",
+
+      // Widgets layer
       "src/widgets",
+
+      // Features layer
       "src/features",
       "src/features/example",
+      "src/features/example/ui",
+      "src/features/example/model",
+
+      // Entities layer
       "src/entities",
+
+      // Shared layer
       "src/shared/ui",
       "src/shared/lib",
+      "src/shared/api",
       "src/shared/config",
     ];
 
-    for (const dir of dirs) {
-      const fullPath = path.join(context.cwd, dir);
+    for (const dir of fsdDirs) {
+      const fullPath = path.join(cwd, dir);
       try {
         await ensureDir(fullPath, fsOptions);
-        created.push(dir);
+        if (!fsOptions.dryRun) {
+          created.push(dir);
+        }
       } catch (error) {
         skipped.push(dir);
       }
     }
   }
 
-  protected async generateFiles(
+  private async generateDocs(
     context: TemplateContext,
     created: string[],
     skipped: string[],
-    fsOptions: FSOptions
-  ): Promise<void> {
-    const fileTemplates = this.getFileTemplates(context);
-
-    for (const fileTemplate of fileTemplates) {
-      const content = resolveContent(fileTemplate.content, context);
-
-      await trackWrite(
-        context.cwd,
-        fileTemplate.path,
-        content,
-        created,
-        skipped,
-        fsOptions
-      );
-    }
-  }
-
-  protected async generateDocs(
-    context: TemplateContext,
-    created: string[],
-    skipped: string[],
-    fsOptions: FSOptions
+    fsOptions: { dryRun?: boolean }
   ): Promise<void> {
     const variables = createTemplateVariables(context);
 
     // Main FSD README
-    const readmeContent = await loadTemplate(
-      "next-app/files/README.fsd.md",
-      variables
-    );
-
+    const readmeContent = generateContent(README_FSD_MD, variables);
     await trackWrite(
       context.cwd,
       "README.fsd.md",
@@ -151,11 +172,7 @@ export class NextAppTemplate extends BaseTemplate {
     );
 
     // Example feature README
-    const exampleReadme = await loadTemplate(
-      "next-app/files/example/README.md",
-      variables
-    );
-
+    const exampleReadme = generateContent(EXAMPLE_FEATURE_README, variables);
     await trackWrite(
       context.cwd,
       "src/features/example/README.md",
@@ -166,38 +183,48 @@ export class NextAppTemplate extends BaseTemplate {
     );
   }
 
-  protected getFileTemplates(context: TemplateContext): FileTemplate[] {
-    return [
-      {
-        path: "src/features/example/index.ts",
-        content: `// Public API for example feature
-// Export only what makes sense for other layers to use
-// Example (after implementing):
+  private async generateExampleFiles(
+    context: TemplateContext,
+    created: string[],
+    skipped: string[],
+    fsOptions: { dryRun?: boolean }
+  ): Promise<void> {
+    // Example feature public API
+    await trackWrite(
+      context.cwd,
+      "src/features/example/index.ts",
+      `/**
+ * Public API for example feature
+ *
+ * Export only what other layers need to use.
+ * Keep this minimal to maintain clear boundaries.
+ */
+
+// Example (uncomment when implemented):
 // export { ExampleComponent } from "./ui/ExampleComponent";
 // export { useExample } from "./model/useExample";
 
 export {};
 `,
-      },
-      {
-        path: "src/shared/config/index.ts",
-        content: `// Shared configuration and constants
+      created,
+      skipped,
+      fsOptions
+    );
+
+    // Shared config
+    await trackWrite(
+      context.cwd,
+      "src/shared/config/index.ts",
+      `/**
+ * Shared Configuration
+ */
+
 export const APP_NAME = "${context.projectName ?? "My App"}";
 export const IS_DEV = process.env.NODE_ENV === "development";
 `,
-      },
-      {
-        path: "src/shared/lib/index.ts",
-        content: `// Shared utility functions and helpers
-export {};
-`,
-      },
-      {
-        path: "src/shared/ui/index.ts",
-        content: `// Shared UI components
-export {};
-`,
-      },
-    ];
+      created,
+      skipped,
+      fsOptions
+    );
   }
 }
