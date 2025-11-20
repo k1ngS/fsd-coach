@@ -8,14 +8,20 @@ export { addFeature } from "./generators/addFeature";
 export { addEntity } from "./generators/addEntity";
 export { createSegments } from "./generators/segments";
 
-// Templates (NEW)
-export { templateRegistry } from "./templates";
-export type {
-  ITemplate,
-  TemplateMetadata,
-  TemplateContext,
-  TemplateName,
-} from "./templates";
+// Templates
+export * from "./templates";
+
+// Bootstrappers
+export {
+  IAppBootstrapper,
+  BootstrapOptions,
+  NextAppBootstrapper,
+  ViteBootstrapper,
+  FastAPIBootstrapper,
+  runCommand,
+  isFrameworkInstalled,
+  isSafeDirectory,
+} from "./templates/bootstrappers";
 
 // Config
 export { loadConfig, saveConfig, mergeConfig } from "./config";
