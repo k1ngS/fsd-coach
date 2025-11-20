@@ -9,6 +9,7 @@ import {
   isFSDCoachError,
   logger,
   templateRegistry,
+  FULLSTACK_COMBINATIONS,
 } from "@fsd-coach/core";
 import { checkbox, select } from "@inquirer/prompts";
 import { createConfigCommand } from "./commands/config";
@@ -18,7 +19,6 @@ import { createListCommand } from "./commands/list";
 
 import { spawn } from "child_process";
 import { promises as fs } from "fs";
-import * as path from "path";
 
 async function safeExecute(action: () => Promise<void>) {
   try {
@@ -83,146 +83,73 @@ program
 // Command: fsd-coach init --template next-app
 program
   .command("init")
-  .description("Initialize a new project structure guided by FSD Coach.")
-  .option(
-    "-t, --template <template>",
-    'Project template to use (options: "next-app", "fastapi", "fullstack")',
-    "next-app"
-  )
-  .option(
-    "-m, --mode <mode>",
-    "Scaffold mode: 'fsd-only' (just FSD folders) or 'next-app' (create Next app + FSD)"
-  )
-  .option("--yes", "Skip interactive questions and use defaults", false)
-  .option("--dry-run", "Simulate project initialization without writing files")
-  .action((opts) =>
-    safeExecute(async () => {
-      const template = opts.template;
-      const dryRun = Boolean(opts.dryRun);
-      const yes = Boolean(opts.yes);
-      const cwd = process.cwd();
+  .description("Initialize FSD project")
+  .option("-t, --template <name>", "Template name", "next-app")
+  .option("-n, --name <name>", "Project name")
+  .option("--combination <combo>", "Fullstack combination")
+  .option("--no-create-app", "Skip framework bootstrap (FSD only)")
+  .option("--no-monorepo", "Disable monorepo (fullstack only)")
+  .option("--force", "Force in non-empty directory")
+  .option("--dry-run", "Simulate without writing")
+  .action(async (opts) => {
+    await safeExecute(async () => {
+      // Validate template exists
+      if (!templateRegistry.has(opts.template)) {
+        const available = templateRegistry
+          .list()
+          .map((t) => t.name)
+          .join(", ");
+        throw new Error(`Unknown template. Available: ${available}`);
+      }
 
-      if (template !== "next-app") {
-        logger.step(
-          `${dryRun ? "[DRY RUN] " : ""}Initializing new project with template: ${template}`
-        );
+      // Interactive combination selection for fullstack
+      let combination = opts.combination;
 
-        const result = await initProject({
-          template,
-          dryRun,
+      if (opts.template === "fullstack" && !combination) {
+        combination = await select({
+          message: "Choose fullstack combination:",
+          choices: Object.entries(FULLSTACK_COMBINATIONS).map(
+            ([key, config]) => ({
+              name: `${config.name} - ${config.description}`,
+              value: key,
+            })
+          ),
         });
-
-        logger.success("Project initialized successfully!");
-        logger.info(`Template: ${chalk.cyan(result.template)}`);
-        logger.info(`Path: ${chalk.cyan(result.cwd)}`);
-
-        if (result.created.length) {
-          console.log(chalk.green("\n✓ Files and directories created:"));
-          logger.list(result.created);
-        }
-
-        if (result.skipped.length) {
-          console.log(
-            chalk.yellow("\n⚠ Files and directories skipped (already exist):")
-          );
-          logger.list(result.skipped, "-");
-        }
-        console.log(
-          chalk.magentaBright(
-            "\n📚 Now read the README.fsd.md and complete the README responses for each feature. Happy coding! 🚀\n"
-          )
-        );
-
-        return;
       }
 
-      // --- Special flow for "next-app" template ---
-
-      const alreadyNextApp = await detectExistingNextApp(cwd);
-
-      let mode: "fsd-only" | "next-app" | undefined = opts.mode;
-
-      // If is already a Next.js app, no need to create it again; just add FSD structure
-      if (alreadyNextApp) {
-        logger.info(
-          chalk.cyan(
-            "Detected existing Next.js app in this folder. FSD Coach will only scaffold the FSD structure."
-          )
-        );
-        mode = "fsd-only";
-      } else if (!mode) {
-        if (yes) {
-          // No interactive, choose default mode safely.
-          mode = "fsd-only";
-        } else {
-          // Ask interactively for choice of mode
-          mode = await select({
-            message: "How do you want to initialize this project?",
-            choices: [
-              {
-                name: "FSD-only (folders + docs, no runtime)",
-                value: "fsd-only",
-              },
-              {
-                name: "Next.js app + FSD (create-next-app + FSD layout)",
-                value: "next-app",
-              },
-            ],
-          });
-        }
-      }
-
-      if (!mode) {
-        // Defense fallback
-        mode = "fsd-only";
-      }
-
-      // --- If mode is "next-app" and no existing Next app, create it first ---
-      if (mode === "next-app" && !alreadyNextApp) {
-        const safe = await isSafeToCreateNextApp(cwd);
-        if (!safe) {
-          throw new Error(
-            "Current directory is not empty and does not look like a fresh project. " +
-              "Run `fsd-coach init` in an empty folder or inside an existing Next.js app."
-          );
-        }
-
-        await runCreateNextApp(cwd, dryRun);
-      }
-
-      // --- All the cases, apply the scaffolding of FSD structure ---
-      logger.step(
-        `${dryRun ? "[DRY RUN] " : ""}Initializing new project with template: ${template}`
-      );
-
+      // Execute
       const result = await initProject({
-        template,
-        dryRun,
+        template: opts.template,
+        projectName: opts.name,
+        dryRun: opts.dryRun,
+        templateOptions: {
+          createApp: opts.createApp,
+          combination,
+          monorepo: opts.monorepo,
+          force: opts.force,
+        },
       });
 
-      logger.success("Project initialized successfully!");
+      // Show results
+      logger.success("✅ Project initialized!");
       logger.info(`Template: ${chalk.cyan(result.template)}`);
-      logger.info(`Path: ${chalk.cyan(result.cwd)}`);
+      logger.info(`Location: ${chalk.cyan(result.cwd)}`);
 
-      if (result.created.length) {
-        console.log(chalk.green("\n✓ Files and directories created:"));
-        logger.list(result.created);
-      }
-
-      if (result.skipped.length) {
-        console.log(
-          chalk.yellow("\n⚠ Files and directories skipped (already exist):")
-        );
-        logger.list(result.skipped, "-");
+      if (result.created.length > 0) {
+        console.log(chalk.green("\nCreated:"));
+        result.created.slice(0, 15).forEach((f) => console.log(`  ${f}`));
+        if (result.created.length > 15) {
+          console.log(
+            chalk.gray(`  ... and ${result.created.length - 15} more`)
+          );
+        }
       }
 
       console.log(
-        chalk.magentaBright(
-          "\n📚 Now read the README.fsd.md and complete the README responses for each feature. Happy coding! 🚀\n"
-        )
+        chalk.magenta("\n📚 Read README.fsd.md for architecture guide!\n")
       );
-    })
-  );
+    });
+  });
 
 // Command: fsd-coach add:feature
 program
