@@ -1,284 +1,200 @@
 # FSD Coach
 
-> Your opinionated CLI coach for Feature‑Sliced Design (FSD)
+> Your opinionated CLI (and core toolkit) for practicing Feature‑Sliced Design from day zero.
 
-FSD Coach is a small CLI (and core library) that helps you start projects already structured by domain/features and forces you to think about architecture before writing ad‑hoc components.
+FSD Coach helps you scaffold Feature‑Sliced Design structures, keep slices documented, and audit whether a project is still respecting the architecture. This repository contains a PNPM workspace with:
 
-## ✨ What is implemented today
+- `packages/cli` – the end-user CLI (`fsd-coach`).
+- `packages/core` – generators, filesystem helpers, config utilities, audit engine, and cache layer that can be reused programmatically.
 
-- 🏗️ Project initialization with FSD structure for **Next.js App Router** (`init --template next-app`).
-- 📦 Feature generator via `fsd-coach add:feature <name>` that creates `src/features/<name>` with segments like `ui`, `model`, `api` and coaching READMEs.
-- 📄 Auto‑generated `README.fsd.md` explaining the base layers and how to use them.
+---
 
-Planned but **not implemented yet** (design only, no code):
+## ✨ Capabilities today
 
-- 🔍 Architecture audit (`fsd-coach audit`).
-- 📦 Entity generator (`fsd-coach add:entity`).
-- ⚙️ Configuration via `.fsdcoachrc` (`fsd-coach config`).
-- 🚀 Cache system and project structure visualization.
-- 📋 Extra commands like `fsd-coach list` and `fsd-coach cache`.
+- `fsd-coach init --template next-app` scaffolds the FSD directory layout (App Router friendly) and drops a `README.fsd.md` explaining the layers.
+- `fsd-coach add:feature <name>` creates a new feature slice with `README.md`, `index.ts`, and chosen segments (`ui`, `model`, `api`, `lib`).
+- `fsd-coach add:entity <name>` scaffolds reusable entities with their own documentation and segments (`model`, `ui`, `lib`).
+- `fsd-coach audit` walks the project and checks public APIs, cross-layer imports, and slice boundaries.
+- `fsd-coach config ...` manages a `.fsdcoachrc` (init/show/get/set/reset/delete).
+- `fsd-coach cache ...` inspects or clears the audit cache.
+- `fsd-coach list` prints existing features, entities, and widgets.
+- `--dry-run` is available on the scaffolding commands so you can preview changes without touching the filesystem.
 
-## 🧠 Principles
+Planned (tracked in code comments / roadmap but not shipped):
 
-- Not a magic boilerplate
-  - No full apps ready out of the box; only a minimal skeleton + docs + questions.
+- Additional templates such as `fastapi` and `fullstack`.
+- Opinionated presets/presets for specific product types.
+- Richer audit rules (import graph heuristics, automatic fixes).
 
-- Forces architectural thinking
-  - Every generated feature has a README with questions such as:
-    - What problem does this feature solve?
-    - Which entities does it use?
-    - What should be exposed in the public API (`index.ts`)?
+---
 
-- Enforces boundaries
-  - Clear layers, consistent naming, and explicit public APIs per slice.
-
-- Same philosophy across stacks
-  - Next.js App Router today; FastAPI and full‑stack templates are on the roadmap.
-
-## 🗂 Monorepo structure
-
-This repository is a PNPM workspace:
+## Repository structure
 
 ```txt
 fsd-coach/
-├─ package.json                 # workspace scripts
+├─ package.json
 ├─ pnpm-workspace.yaml
 ├─ packages/
-│  ├─ cli/                      # CLI app (bin: fsd-coach)
-│  └─ core/                     # core generators and filesystem utilities
+│  ├─ cli/        # CLI entry point and command wiring
+│  └─ core/       # generators, audit engine, cache, config helpers
+└─ README.md
 ```
 
-Root scripts:
+Workspace scripts:
 
-- `pnpm build` → build all packages.
-- `pnpm test` → run tests (none yet; placeholder).
-- `pnpm typecheck` → type-check all packages.
+- `pnpm build` – run `tsup` builds across all packages.
+- `pnpm typecheck` – run `tsc --noEmit` in every package.
+- `pnpm test` – placeholder (no automated tests yet).
 
-## 🚀 Quick start (from this repo)
+---
 
-Prerequisites:
-
-- Node.js 18+
-- PNPM (this repo uses `pnpm@10.21.0`)
-
-Install dependencies and build:
+## Local quick start (working on this repo)
 
 ```powershell
-# from repo root
+# Install dependencies
 pnpm install
+
+# Build both packages
 pnpm -w run build
-```
 
-Run the CLI directly:
-
-```powershell
+# Try the CLI from source
 node packages/cli/dist/cli.js --help
-node packages/cli/dist/cli.js init --template next-app
+node packages/cli/dist/cli.js init --template next-app --dry-run
 node packages/cli/dist/cli.js add:feature auth
 ```
 
-After publishing to npm, the idea is to use:
+Once published to npm, all commands can be executed with `npx fsd-coach <command>`.
 
-```bash
-npx fsd-coach init --template next-app
-npx fsd-coach add:feature auth
-```
-
-## 🚀 Bootstrapping a Next.js + FSD Project
-
-`fsd-coach` can both:
-
-1. Create a full **Next.js application**, and
-2. Scaffold a **Feature-Sliced Design (FSD)** structure inside it.
-
-### 1. Create a new Next.js app with FSD (recommended)
-
-Run inside an **empty folder**:
-
-```bash
-fsd-coach init --template next-app --mode next-app
-```
-
-What this does:
-
-- Uses `pnpm dlx create-next-app@latest .` to create a Next.js app (TypeScript, Tailwind, ESLint, App Router, etc.).
-- Then applies the FSD layout on top:
-  - `src/features`
-  - `src/entities`
-  - `src/widgets`
-  - `src/processes`
-  - `src/shared/ui`
-  - `src/shared/lib`
-  - `src/shared/config`
-  - `README.fsd.md`
-  - `src/features/example/*`
-
-After that, just:
-
-```bash
-pnpm install
-pnpm dev
-```
-
-Your Next.js app is now FSD-ready.
+Prerequisites: Node.js ≥ 18 and PNPM (this repo uses `pnpm@10.21.0`).
 
 ---
 
-### 2. Add FSD structure to an existing Next.js app
-
-If you already have a Next.js project, run:
-
-```bash
-fsd-coach init --template next-app
-```
-
-`fsd-coach` will:
-
-- Detect the existing Next.js app via `package.json`.
-- **Skip** creating another Next app.
-- Only scaffold the FSD structure (folders + `README.fsd.md`).
-
-This is ideal if you started with `create-next-app` manually and now want to adopt FSD.
-
----
-
-### 3. FSD-only mode (no runtime)
-
-If you want just the FSD folder layout (no Next.js runtime):
-
-```bash
-fsd-coach init --template next-app --mode fsd-only
-```
-
-This will:
-
-- Create only the FSD-oriented directories + docs.
-- Not install or generate any framework-specific code.
-
----
-
-### 4. Non-interactive usage
-
-For scripts/CI or fully automated setup, use:
-
-```bash
-fsd-coach init --template next-app --mode next-app --yes
-```
-
-- `--yes` skips interactive questions and uses safe defaults.
-
-## 📚 Commands (implemented)
+## CLI usage
 
 ### `fsd-coach init`
 
-Initialize a new project skeleton.
-
-**Usage:**
+Initialize the base FSD layout.
 
 ```bash
-fsd-coach init
-fsd-coach init --template next-app
+fsd-coach init --template next-app [--dry-run]
 ```
 
-Currently, the `next-app` template is implemented. Other templates (`fastapi`, `fullstack`) are still in design.
+- Currently only `next-app` is implemented; it creates `app/(public)` plus all `src/*` layers, a sample feature (`src/features/example`), and `README.fsd.md` describing how to work with the structure.
+- `--dry-run` prints what would change without creating directories/files.
 
-What `next-app` does:
-
-- Creates an App Router base directory and FSD layers under `src/`.
-- Writes `README.fsd.md` explaining each layer and how to use it.
-- Adds an example feature skeleton at `src/features/example/`.
-
-Resulting structure (simplified):
+Result snapshot:
 
 ```txt
 .
-├─ app/
-│  └─ (public)/
-├─ src/
-│  ├─ app/            # providers, global configs
-│  ├─ processes/      # large flows (auth-flow, onboarding)
-│  ├─ pages/          # optional FSD pages
-│  ├─ widgets/
-│  ├─ features/
-│  │  └─ example/
-│  │     ├─ README.md
-│  │     └─ index.ts
-│  ├─ entities/
-│  └─ shared/
-│     ├─ ui/
-│     ├─ lib/
-│     └─ config/
-└─ README.fsd.md
+├─ app/(public)
+├─ src/app
+├─ src/processes
+├─ src/pages
+├─ src/widgets
+├─ src/features/example
+├─ src/entities
+└─ src/shared/{ui,lib,config}
 ```
 
 ### `fsd-coach add:feature <name>`
 
-Create a new feature slice and its coaching docs.
-
-**Usage:**
+Generate a new feature slice.
 
 ```bash
-fsd-coach add:feature auth
-fsd-coach add:feature campaigns
+fsd-coach add:feature campaign --segments ui,model,api --dry-run
 ```
 
-Behavior (based on `@fsd-coach/core`):
+- Valid segments: `ui`, `model`, `api`, `lib`; when you omit `--segments`, an interactive checkbox prompts you.
+- Each slice gets a `README.md` with coaching questions plus an `index.ts` that acts as the public API.
+- `--dry-run` shows the tree that would be created.
 
-- Creates `src/features/<name>/`.
-- Writes a root `README.md` with questions you should answer before coding.
-- Creates `index.ts` as the single public API entry point for that feature.
-- Creates segment directories and READMEs:
-  - `ui/` → visual components for the feature (no heavy business rules).
-  - `model/` → state, hooks, and business logic (testable without UI).
-  - `api/` → HTTP clients/calls encapsulated for this feature.
-  - `lib/` (optional) → helpers internal to the feature.
+### `fsd-coach add:entity <name>`
 
-Example structure:
-
-```txt
-src/features/auth/
-├─ README.md
-├─ index.ts
-├─ ui/
-│  └─ README.md
-├─ model/
-│  └─ README.md
-├─ api/
-│  └─ README.md
-└─ lib/
-	 └─ README.md
-```
-
-## 🧩 Templates (status)
-
-- `next-app` (implemented): Next.js App Router + FSD directories + coaching docs.
-- `fastapi` (planned): FSD‑inspired FastAPI backend with `app/core`, `app/shared`, `app/modules/<feature>`.
-- `fullstack` (planned): Combined `frontend/` (next-app) + `backend/` (fastapi) plus `ARCHITECTURE.md` explaining front/back mirroring.
-
-## 🧭 Recommended workflow (vision)
-
-### Step 1: Start a project
+Scaffold reusable domain entities.
 
 ```bash
-npx fsd-coach init --template next-app
+fsd-coach add:entity user --segments model,ui
 ```
 
-### Step 2: Before writing random UI
+- Defaults to `model` + `ui`; `lib` is optional.
+- Each entity ships with a README explaining what to document and an `index.ts` stub for the public API.
+- Supports `--dry-run` as well.
+
+### `fsd-coach audit`
+
+Run static checks against your project:
 
 ```bash
-npx fsd-coach add:feature auth
+fsd-coach audit [--strict] [--fix]
 ```
 
-Fill in the generated READMEs and define the public API in `src/features/auth/index.ts` before writing components.
+- Scans `src/` for `.ts/.tsx/.js/.jsx` files.
+- Validates cross-layer imports, shared imports, direct segment imports, cross-feature dependencies, and verifies that every slice exposes a public API (`index.ts`).
+- Uses a persistent cache (`packages/core/src/cache`) to avoid re-parsing unchanged files.
+- `--strict` fails when warnings exist; `--fix` is reserved for future auto-fixes.
 
-### Step 3: Entities and audit (future)
+### `fsd-coach config`
 
-The design includes:
+Manage the `.fsdcoachrc` file.
 
-- `fsd-coach add:entity <name>` to create reusable domain entities.
-- `fsd-coach audit` to scan the folder structure and remind you about missing READMEs or missing `index.ts` public APIs.
+Common subcommands:
 
-## 🛠 Developing this repo
+| Command                              | Description                               |
+| ------------------------------------ | ----------------------------------------- |
+| `fsd-coach config init [--force]`    | Create a config file with defaults.       |
+| `fsd-coach config show [--defaults]` | Print effective config or defaults.       |
+| `fsd-coach config get <key>`         | Read nested keys like `rootDir.features`. |
+| `fsd-coach config set <key> <value>` | Update values (JSON or plain strings).    |
+| `fsd-coach config reset --yes`       | Reset to defaults.                        |
+| `fsd-coach config delete --yes`      | Remove the config file.                   |
+
+Configuration lets you customize default segments, directories, lint rules, and localization.
+
+### `fsd-coach cache`
+
+Inspect or clear the audit cache.
+
+```bash
+fsd-coach cache --stats
+fsd-coach cache --clear
+```
+
+- Without flags it prints basic statistics (file count and total size).
+- `--clear` wipes cached parse results.
+
+### `fsd-coach list`
+
+Enumerate slices already present in `src/features`, `src/entities`, and `src/widgets`.
+
+```bash
+fsd-coach list [--features] [--entities] [--widgets] [--json]
+```
+
+- Handy after running generators or during reviews to see how many slices exist.
+
+---
+
+## Dry-run mode
+
+The commands `init`, `add:feature`, and `add:entity` accept `--dry-run`. When enabled:
+
+- Directories/files are **not** created.
+- The logger prints `[DRY RUN] Would create ...` messages.
+- The summary still lists what would be created vs skipped, letting you preview work in CI or pull requests before applying.
+
+---
+
+## Recommended workflow
+
+1. `fsd-coach init --template next-app` – establish the base layout.
+2. For each feature, `fsd-coach add:feature <name>`, fill the README, and expose a clean public API.
+3. Promote cross-cutting concepts to entities via `fsd-coach add:entity <name>`.
+4. Run `fsd-coach list` to keep track of slices and `fsd-coach audit` before merging.
+5. Customize defaults with `fsd-coach config` if your team prefers different root folders or segments.
+
+---
+
+## Development scripts
 
 ```powershell
 pnpm install
@@ -287,15 +203,24 @@ pnpm -w run build
 node packages/cli/dist/cli.js --help
 ```
 
-Notes:
+- Rebuild (`pnpm -w run build`) whenever you change code in `packages/core` so the CLI consumes the latest output.
+- Lint/test commands can be added as the project evolves.
 
-- The CLI package `fsd-coach` depends on the core package `@fsd-coach/core` (workspace protocol).
-- If you change generators in `packages/core`, rebuild before testing the CLI again.
+---
 
-## 🎓 Learning FSD
+## Roadmap & ideas
 
-Some good starting points to understand Feature‑Sliced Design and modular architecture:
+- Templates for FastAPI backends and full-stack mirrors (`frontend/` ↔ `backend/`).
+- `add:entity`/`add:feature` presets (e.g., SaaS dashboard, marketplace, admin).
+- Import lint auto-fixes and richer diagnostics in `fsd-coach audit`.
+- VS Code integration and interactive guides.
 
-- https://feature-sliced.design/
-- https://feature-sliced.design/docs/get-started/overview
-- Articles and talks about “feature‑first architecture”, “modular frontends”, and “vertical slices”.
+---
+
+## Learn more about Feature‑Sliced Design
+
+- [feature-sliced.design](https://feature-sliced.design/)
+- [feature-sliced.design/docs/get-started/overview](https://feature-sliced.design/docs/get-started/overview)
+- Talks/articles about “vertical slices” and “modular frontends”.
+
+Document every slice, ship features intentionally, and let the coach keep you honest. 🧠
