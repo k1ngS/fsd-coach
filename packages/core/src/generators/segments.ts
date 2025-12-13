@@ -42,6 +42,47 @@ export const ENTITY_SEGMENTS: Record<string, SegmentConfig> = {
   },
 };
 
+export const WIDGET_SEGMENTS: Record<string, SegmentConfig> = {
+  ui: {
+    name: "ui",
+    description: getSegmentTemplate("widget", "ui")?.description ?? "",
+  },
+  model: {
+    name: "model",
+    description: getSegmentTemplate("widget", "model")?.description ?? "",
+  },
+  lib: {
+    name: "lib",
+    description: getSegmentTemplate("widget", "lib")?.description ?? "",
+  },
+};
+
+export const PROCESS_SEGMENTS: Record<string, SegmentConfig> = {
+  model: {
+    name: "model",
+    description: getSegmentTemplate("process", "model")?.description ?? "",
+  },
+  lib: {
+    name: "lib",
+    description: getSegmentTemplate("process", "lib")?.description ?? "",
+  },
+  api: {
+    name: "api",
+    description: getSegmentTemplate("process", "api")?.description ?? "",
+  },
+};
+
+export const PAGE_SEGMENTS: Record<string, SegmentConfig> = {
+  ui: {
+    name: "ui",
+    description: getSegmentTemplate("page", "ui")?.description ?? "",
+  },
+  model: {
+    name: "model",
+    description: getSegmentTemplate("page", "model")?.description ?? "",
+  },
+};
+
 /**
  * Create segments directories and READMEs
  */
