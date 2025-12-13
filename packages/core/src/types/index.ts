@@ -103,6 +103,7 @@ export interface AuditOptions {
   autoFix?: boolean;
   ignore?: string[];
   layers?: FSDLayer[];
+  noCache?: boolean;
 }
 
 export interface ImportStatement {
@@ -113,4 +114,8 @@ export interface ImportStatement {
   layer?: FSDLayer;
   slice?: string;
   segment?: Segment;
+  toLayer?: FSDLayer;
+  toSlice?: string;
+  toSegment?: Segment;
+  resolvedPath?: string;
 }
