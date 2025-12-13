@@ -6,6 +6,9 @@ import {
   initProject,
   addFeature,
   addEntity,
+  addWidget,
+  addPage,
+  addProcess,
   isFSDCoachError,
   logger,
   templateRegistry,
@@ -16,9 +19,6 @@ import { createConfigCommand } from "./commands/config";
 import { createAuditCommand } from "./commands/audit";
 import { createCacheCommand } from "./commands/cache";
 import { createListCommand } from "./commands/list";
-
-import { spawn } from "child_process";
-import { promises as fs } from "fs";
 
 async function safeExecute(action: () => Promise<void>) {
   try {
@@ -274,81 +274,196 @@ program
     })
   );
 
-// --- Helpers for Next.js app detection and creation ---
-async function detectExistingNextApp(cwd: string): Promise<boolean> {
-  try {
-    const pkgPath = path.join(cwd, "package.json");
-    const raw = await fs.readFile(pkgPath, "utf-8");
-    const pkg = JSON.parse(raw) as {
-      dependencies?: Record<string, string>;
-      devDependencies?: Record<string, string>;
-    };
+// Command: fsd-coach add:widget
+program
+  .command("add:widget")
+  .description(
+    "Create a new widget (reusable UI component) following FSD conventions."
+  )
+  .argument("<name>", "Widget name (ex: flux-indicator, faction-tracker)")
+  .option(
+    "-s, --segments <segments>",
+    "Comma-separated segments (default: ui,model)"
+  )
+  .option("--dry-run", "Simulate widget creation without writing files")
+  .action((name, options) =>
+    safeExecute(async () => {
+      const rawSegments = options.segments
+        ? String(options.segments)
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+        : null;
 
-    const deps = {
-      ...(pkg.dependencies || {}),
-      ...(pkg.devDependencies || {}),
-    };
-    return typeof deps["next"] === "string";
-  } catch {
-    // Could not read package.json, assume no Next.js
-    return false;
-  }
-}
+      const segments =
+        rawSegments && rawSegments?.length
+          ? rawSegments
+          : await checkbox({
+              message: `Which segments to create for the widget "${name}"?`,
+              choices: [
+                { name: "ui", value: "ui", checked: true },
+                { name: "model", value: "model", checked: true },
+                { name: "lib", value: "lib" },
+              ],
+            });
 
-async function isSafeToCreateNextApp(cwd: string): Promise<boolean> {
-  const entries = await fs.readdir(cwd, { withFileTypes: true });
+      const dryRun = Boolean(options.dryRun);
+      const result = await addWidget({
+        name,
+        segments,
+        dryRun,
+      });
 
-  if (!entries.length) return true;
+      logger.success(
+        `${dryRun ? "[DRY RUN] Widget would be created" : "Widget created"}: ${chalk.cyan(result.name)}`
+      );
 
-  // We allow only "harmless" files so as not to destroy an existing project
-  const allowed = new Set([
-    ".git",
-    ".gitignore",
-    ".gitattributes",
-    "README.md",
-    "LICENSE",
-  ]);
+      if (result.created.length) {
+        console.log(chalk.green("\n✓ Created:"));
+        logger.list(result.created);
+      }
 
-  for (const entry of entries) {
-    if (!allowed.has(entry.name)) {
-      return false;
-    }
-  }
+      if (result.skipped.length) {
+        console.log(chalk.yellow("\n⚠ Ignored (already existed):"));
+        logger.list(result.skipped, "-");
+      }
 
-  return true;
-}
-
-async function runCreateNextApp(cwd: string, dryRun: boolean): Promise<void> {
-  const cmd = "pnpm";
-  const args = ["dlx", "create-next-app@latest", ".", "--yes", "--use-pnpm"];
-
-  const pretty = `${cmd} ${args.join(" ")}`;
-
-  logger.step(
-    `${dryRun ? "[DRY RUN] " : ""}Creating Next.js app with command: ${chalk.cyan(pretty)}`
+      console.log(
+        chalk.magentaBright(
+          "\n🎨 Now open the widget README and document the reusable component.\n"
+        )
+      );
+    })
   );
 
-  if (dryRun) return;
+// Command: fsd-coach add:process
+program
+  .command("add:process")
+  .description(
+    "Create a new process (global system) following FSD conventions."
+  )
+  .argument("<name>", "Process name (ex: flux-state, corruption-system)")
+  .option(
+    "-s, --segments <segments>",
+    "Comma-separated segments (default: model,lib,api)"
+  )
+  .option("--dry-run", "Simulate process creation without writing files")
+  .action((name, options) =>
+    safeExecute(async () => {
+      const rawSegments = options.segments
+        ? String(options.segments)
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+        : null;
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(cmd, args, {
-      cwd,
-      stdio: "inherit",
-      shell: process.platform === "win32",
-    });
+      const segments =
+        rawSegments && rawSegments?.length
+          ? rawSegments
+          : await checkbox({
+              message: `Which segments to create for the process "${name}"?`,
+              choices: [
+                { name: "model", value: "model", checked: true },
+                { name: "lib", value: "lib", checked: true },
+                { name: "api", value: "api", checked: true },
+              ],
+            });
 
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`create-next-app exited with code ${code}`));
+      const dryRun = Boolean(options.dryRun);
+      const result = await addProcess({
+        name,
+        segments,
+        dryRun,
+      });
+
+      logger.success(
+        `${dryRun ? "[DRY RUN] Process would be created" : "Process created"}: ${chalk.cyan(result.name)}`
+      );
+
+      if (result.created.length) {
+        console.log(chalk.green("\n✓ Created:"));
+        logger.list(result.created);
       }
-    });
 
-    child.on("error", (err) => {
-      reject(err);
-    });
-  });
-}
+      if (result.skipped.length) {
+        console.log(chalk.yellow("\n⚠ Ignored (already existed):"));
+        logger.list(result.skipped, "-");
+      }
+
+      console.log(
+        chalk.magentaBright(
+          "\n⚙️ Now open the process README and document your global system.\n"
+        )
+      );
+    })
+  );
+
+// Command: fsd-coach add:page
+program
+  .command("add:page")
+  .description("Create a new page (route) following FSD conventions.")
+  .argument("<name>", "Page name (ex: world-map, character-sheet)")
+  .option(
+    "-s, --segments <segments>",
+    "Comma-separated segments (default: ui,model)"
+  )
+  .option(
+    "-r, --route <route>",
+    "Optional custom route path (ex: /character/:id)"
+  )
+  .option("--dry-run", "Simulate page creation without writing files")
+  .action((name, options) =>
+    safeExecute(async () => {
+      const rawSegments = options.segments
+        ? String(options.segments)
+            .split(",")
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+        : null;
+
+      const segments =
+        rawSegments && rawSegments?.length
+          ? rawSegments
+          : await checkbox({
+              message: `Which segments to create for the page "${name}"?`,
+              choices: [
+                { name: "ui", value: "ui", checked: true },
+                { name: "model", value: "model", checked: true },
+              ],
+            });
+
+      const dryRun = Boolean(options.dryRun);
+      const result = await addPage({
+        name,
+        segments,
+        dryRun,
+        route: options.route,
+      });
+
+      logger.success(
+        `${dryRun ? "[DRY RUN] Page would be created" : "Page created"}: ${chalk.cyan(result.name)}`
+      );
+
+      if (result.route) {
+        logger.info(`Route: ${chalk.yellow(result.route)}`);
+      }
+
+      if (result.created.length) {
+        console.log(chalk.green("\n✓ Created:"));
+        logger.list(result.created);
+      }
+
+      if (result.skipped.length) {
+        console.log(chalk.yellow("\n⚠ Ignored (already existed):"));
+        logger.list(result.skipped, "-");
+      }
+
+      console.log(
+        chalk.magentaBright(
+          "\n🌐 Now add routing configuration to your app router.\n"
+        )
+      );
+    })
+  );
 
 program.parse(process.argv);
