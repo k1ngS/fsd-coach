@@ -81,7 +81,7 @@ export function validateSliceName(name: string): ValidationResult {
 
 export function throwIfInvalidName(
   name: string,
-  type: "feature" | "entity" | "widget"
+  type: "feature" | "entity" | "widget" | "process" | "page"
 ): void {
   const validation = validateSliceName(name);
   if (!validation.valid) {
