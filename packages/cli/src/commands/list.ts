@@ -8,6 +8,8 @@ interface ProjectStructure {
   features: string[];
   entities: string[];
   widgets: string[];
+  processes: string[];
+  pages: string[];
 }
 
 async function getProjectStructure(): Promise<ProjectStructure> {
@@ -16,9 +18,17 @@ async function getProjectStructure(): Promise<ProjectStructure> {
     features: [],
     entities: [],
     widgets: [],
+    processes: [],
+    pages: [],
   };
 
-  for (const layer of ["features", "entities", "widgets"] as const) {
+  for (const layer of [
+    "features",
+    "entities",
+    "widgets",
+    "processes",
+    "pages",
+  ] as const) {
     const layerDir = path.join(srcDir, layer);
 
     try {
@@ -43,6 +53,8 @@ export function createListCommand(): Command {
     .option("--features", "List only features")
     .option("--entities", "List only entities")
     .option("--widgets", "List only widgets")
+    .option("--processes", "List only processes")
+    .option("--pages", "List only pages")
     .option("-j, --json", "Output as JSON")
     .action(async (options) => {
       const structure = await getProjectStructure();
@@ -53,7 +65,11 @@ export function createListCommand(): Command {
       }
 
       const showAll =
-        !options.features && !options.entities && !options.widgets;
+        !options.features &&
+        !options.entities &&
+        !options.widgets &&
+        !options.processes &&
+        !options.pages;
 
       if (showAll || options.features) {
         logger.info(chalk.cyan("\n📦 Features:"));
@@ -82,10 +98,30 @@ export function createListCommand(): Command {
         }
       }
 
+      if (showAll || options.processes) {
+        logger.info(chalk.cyan("\n⚙️ Processes:"));
+        if (structure.processes.length === 0) {
+          logger.info(chalk.gray(" (none)"));
+        } else {
+          structure.processes.forEach((p) => logger.info(` - ${p}`));
+        }
+      }
+
+      if (showAll || options.pages) {
+        logger.info(chalk.cyan("\n📄 Pages:"));
+        if (structure.pages.length === 0) {
+          logger.info(chalk.gray(" (none)"));
+        } else {
+          structure.pages.forEach((pg) => logger.info(` - ${pg}`));
+        }
+      }
+
       const total =
         structure.features.length +
         structure.entities.length +
-        structure.widgets.length;
+        structure.widgets.length +
+        structure.processes.length +
+        structure.pages.length;
 
       logger.info(chalk.dim(`\nTotal: ${total} slices\n`));
     });
