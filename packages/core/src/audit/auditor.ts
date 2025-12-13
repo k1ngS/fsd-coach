@@ -7,7 +7,11 @@ import {
   ImportStatement,
   Segment,
 } from "../types";
-import { extractImports, parseFSDPath } from "./importParser";
+import {
+  extractImports,
+  parseFSDPath,
+  resolveImportPath,
+} from "./importParser";
 import { checkLayerImports, checkSharedImports } from "./rules/layerImports";
 import { checkPublicApi, checkDirectSegmentImports } from "./rules/publicApi";
 import { checkCrossFeatureImports } from "./rules/featureImports";
@@ -75,7 +79,9 @@ export async function auditProject(
   const allImports: ImportStatement[] = [];
   let totalFiles = 0;
 
-  const importCache = new FileCache<ImportStatement[]>();
+  const importCache = options.noCache
+    ? null
+    : new FileCache<ImportStatement[]>();
 
   // Scan all TypeScript/JavaScript files
   logger.info("Scanning files...");
@@ -86,23 +92,66 @@ export async function auditProject(
 
     try {
       const cacheKey = path.relative(projectRoot, filePath).replace(/\\/g, "/");
-      let imports = await importCache.get(cacheKey, filePath);
+      let imports: ImportStatement[];
 
-      if (!imports) {
-        logger.debug(`Cache miss for ${cacheKey}, extracting imports...`);
-        imports = await extractImports(filePath);
-        await importCache.set(cacheKey, imports, filePath);
+      if (importCache) {
+        const cachedImports = await importCache.get(cacheKey, filePath);
+        if (!cachedImports) {
+          logger.debug(`Cache miss for ${cacheKey}, extracting imports...`);
+          imports = await extractImports(filePath);
+          await importCache.set(cacheKey, imports, filePath);
+        } else {
+          logger.debug(`Cache hit for ${cacheKey}`);
+          imports = cachedImports;
+        }
       } else {
-        logger.debug(`Cache hit for ${cacheKey}`);
+        // Without cache
+        imports = await extractImports(filePath);
       }
 
       allImports.push(...imports);
 
       for (const imp of imports) {
-        const parsed = parseFSDPath(imp.file, projectRoot);
-        imp.layer = parsed.layer;
-        imp.slice = parsed.slice;
-        imp.segment = parsed.segment as Segment | undefined;
+        const fromParsed = parseFSDPath(imp.file, projectRoot);
+        imp.layer = fromParsed.layer;
+        imp.slice = fromParsed.slice;
+        imp.segment = fromParsed.segment as Segment | undefined;
+
+        // Tentar resolver o path
+        const resolved = resolveImportPath(imp.source, imp.file, projectRoot);
+
+        if (resolved) {
+          const toParsed = parseFSDPath(resolved, projectRoot);
+          imp.toLayer = toParsed.layer;
+          imp.toSlice = toParsed.slice;
+          imp.toSegment = toParsed.segment as Segment | undefined;
+          imp.resolvedPath = resolved;
+        } else if (imp.isRelative) {
+          // Se é import relativo mas não foi resolvido,
+          // construir o path baseado na estrutura esperada
+          const fromDir = path.dirname(imp.file);
+          logger.debug(`From dir: ${fromDir}`);
+          logger.debug(`Project root: ${projectRoot}`);
+          const absolutePath = path.resolve(fromDir, imp.source);
+
+          // Parsear mesmo que o arquivo não exista fisicamente
+          const toParsed = parseFSDPath(absolutePath, projectRoot);
+
+          // Debug temporário
+          logger.debug(`Import source: ${imp.source}`);
+          logger.debug(`From file: ${imp.file}`);
+          logger.debug(`Resolved to: ${absolutePath}`);
+          logger.debug(
+            `Parsed: layer=${toParsed.layer}, slice=${toParsed.slice}`
+          );
+
+          if (toParsed.layer) {
+            imp.toLayer = toParsed.layer;
+            imp.toSlice = toParsed.slice;
+            imp.toSegment = toParsed.segment as Segment | undefined;
+            imp.resolvedPath = absolutePath;
+          }
+        }
       }
     } catch (error) {
       logger.debug(`Failed to scan ${filePath}: ${error}`);

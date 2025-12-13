@@ -11,23 +11,27 @@ export async function extractImports(
   const content = await fs.readFile(filePath, "utf-8");
   const imports: ImportStatement[] = [];
 
-  // Regex to match import statements
-  const importRegex =
-    /^(?:import\s+(?:(?:[\w\s{},*]+)\s+from\s+)?['"]([^'"]+)['"]|(?:const|let|var)\s+.*?=\s*require\(['"]([^'"]+)['"]\))/gm;
-
-  let match;
-  let lineNumber = 0;
-
   const lines = content.split("\n");
+  let lineNumber = 0;
 
   for (const line of lines) {
     lineNumber++;
     const trimmedLine = line.trim();
 
+    // Skip comments and empty lines
+    if (
+      !trimmedLine ||
+      trimmedLine.startsWith("//") ||
+      trimmedLine.startsWith("/*")
+    ) {
+      continue;
+    }
+
     // ES6 import
     const es6Match = trimmedLine.match(
       /^import\s+(?:(?:[\w\s{},*]+)\s+from\s+)?['"]([^'"]+)['"]/
     );
+
     if (es6Match) {
       const source = es6Match[1];
       imports.push({
@@ -36,6 +40,8 @@ export async function extractImports(
         line: lineNumber,
         isRelative: source.startsWith(".") || source.startsWith("/"),
       });
+
+      continue;
     }
 
     // CommonJS require
@@ -63,8 +69,14 @@ export function parseFSDPath(
   filePath: string,
   projectRoot: string
 ): { layer?: FSDLayer; slice?: string; segment?: string } {
-  const relativePath = path.relative(projectRoot, filePath);
-  const parts = relativePath.split(path.sep);
+  // Normalizar separadores para Unix-style
+  const normalizedFilePath = filePath.replace(/\\/g, "/");
+  const normalizedRoot = projectRoot.replace(/\\/g, "/");
+
+  const relativePath = path
+    .relative(normalizedRoot, normalizedFilePath)
+    .replace(/\\/g, "/");
+  const parts = relativePath.split("/");
 
   // Expected format: src/[layer]/[slice]/[segment]/file.ts
   if (parts[0] !== "src") {
@@ -98,7 +110,7 @@ export function parseFSDPath(
 export function resolveImportPath(
   importSource: string,
   fromFile: string,
-  projectRoot: string
+  _projectRoot: string
 ): string | null {
   if (!importSource.startsWith(".")) {
     // External or alias import
