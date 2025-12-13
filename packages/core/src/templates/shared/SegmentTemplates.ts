@@ -174,13 +174,114 @@ export function formatUserName(user: User): string {
 `,
     },
   },
+  widget: {
+    ui: {
+      name: "ui",
+      description: `# UI Segment
+
+The presentation layer for this widget.
+
+- Component files (.tsx, .jsx)
+- Styling files
+- Component-specific hooks
+- UI logic (but not business logic)
+`,
+    },
+    model: {
+      name: "model",
+      description: `# Model Segment
+
+State management and business logic for this widget.
+
+- Types and interfaces
+- Selectors
+- Actions
+- State hooks
+`,
+    },
+    lib: {
+      name: "lib",
+      description: `# Lib Segment
+
+Utilities and helpers for this widget.
+
+- Helper functions
+- Constants
+- Utils specific to this widget
+`,
+    },
+  },
+  process: {
+    model: {
+      name: "model",
+      description: `# Model Segment
+
+Core business logic and state for this global process.
+
+- Types and state interfaces
+- Reducers/state machines
+- Selectors
+- Core business functions
+`,
+    },
+    lib: {
+      name: "lib",
+      description: `# Lib Segment
+
+Shared utilities and helpers for this process.
+
+- Helper functions
+- Constants
+- Validators
+- Transformers
+`,
+    },
+    api: {
+      name: "api",
+      description: `# API Segment
+
+External communication and side effects.
+
+- API calls
+- Event emitters/listeners
+- Subscriptions
+- External integrations
+`,
+    },
+  },
+  page: {
+    ui: {
+      name: "ui",
+      description: `# UI Segment
+
+The page component and its layout.
+
+- Page component file
+- Page-specific sub-components
+- Page-specific styling
+- Layout components
+`,
+    },
+    model: {
+      name: "model",
+      description: `# Model Segment
+
+Page-specific state and logic.
+
+- Page state (if not using global process)
+- Page types
+- Page selectors
+- Page hooks
+`,
+    },
+  },
 };
 
 /**
  * Get segment template by type and segment name
  */
 export function getSegmentTemplate(
-  type: "feature" | "entity",
+  type: "feature" | "entity" | "widget" | "process" | "page",
   segmentName: string
 ): SegmentTemplate | undefined {
   return SEGMENT_TEMPLATES[type][
